@@ -2,38 +2,59 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Pongal Path</title>
-  <link rel="stylesheet" href="style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f6efe6;
+      display: flex;
+      justify-content: center;
+      padding: 40px;
+    }
+    .box {
+      max-width: 500px;
+      width: 100%;
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+    }
+    .question {
+      margin-bottom: 15px;
+      padding: 12px;
+      background: #fafafa;
+      border-radius: 8px;
+    }
+    input, button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      font-size: 1rem;
+    }
+    button {
+      background: #c96b2c;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    #feedback {
+      margin-top: 10px;
+      font-size: 0.9rem;
+    }
+  </style>
 </head>
 <body>
 
-  <div class="container">
-    <img src="assets/pot.svg" class="pot" alt="Pongal Pot">
+<div class="box">
+  <h2>Pongal Path</h2>
+  <div id="qa"></div>
 
-    <h1>Pongal Path</h1>
-    <p class="subtitle">A small journey. No prizes. Just curiosity.</p>
+  <input id="answer" placeholder="Your answer" autocomplete="off" />
+  <button onclick="submitAnswer()">Submit</button>
+  <div id="feedback"></div>
+</div>
 
-    <div class="card">
-      <p id="question"></p>
-
-      <input
-        type="text"
-        id="answer"
-        placeholder="Enter your answer"
-        autocomplete="off"
-      />
-
-      <button onclick="submitAnswer()">Submit</button>
-
-      <p id="feedback"></p>
-    </div>
-
-    <img src="assets/kolam.svg" class="kolam" alt="Kolam">
-  </div>
-
-  <script src="challenge.js"></script>
+<script src="challenge.js"></script>
 </body>
 </html>
-
-

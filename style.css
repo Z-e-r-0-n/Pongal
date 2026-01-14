@@ -1,22 +1,15 @@
-* {
-  box-sizing: border-box;
-  font-family: system-ui, sans-serif;
-}
-
 body {
   margin: 0;
   background: #f6efe6;
-  color: #3b2f2f;
+  font-family: system-ui, sans-serif;
   display: flex;
   justify-content: center;
-  align-items: center;
-  min-height: 100vh;
 }
 
-.container {
-  text-align: center;
-  max-width: 420px;
+.page {
+  max-width: 520px;
   padding: 20px;
+  text-align: center;
 }
 
 h1 {
@@ -25,60 +18,53 @@ h1 {
 }
 
 .subtitle {
-  font-size: 0.95rem;
-  opacity: 0.8;
+  font-size: 0.9rem;
+  opacity: 0.75;
 }
 
-.card {
-  background: #fff;
-  border-radius: 12px;
-  padding: 20px;
+.pot {
+  width: 80px;
+  margin: auto;
+}
+
+.kolam {
+  width: 140px;
   margin-top: 20px;
-  box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+  opacity: 0.7;
 }
 
-#question {
-  font-size: 1.05rem;
-  margin-bottom: 15px;
+.question {
+  background: white;
+  padding: 15px;
+  border-radius: 10px;
+  margin-top: 15px;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.1);
+  text-align: left;
+}
+
+.inputBox {
+  margin-top: 20px;
 }
 
 input {
   width: 100%;
   padding: 10px;
   font-size: 1rem;
-  border-radius: 6px;
-  border: 1px solid #ccc;
-  margin-bottom: 12px;
 }
 
 button {
   width: 100%;
+  margin-top: 8px;
   padding: 10px;
+  font-size: 1rem;
   background: #c96b2c;
   color: white;
   border: none;
   border-radius: 6px;
-  font-size: 1rem;
   cursor: pointer;
-}
-
-button:hover {
-  background: #b45f26;
 }
 
 #feedback {
   margin-top: 10px;
   font-size: 0.9rem;
 }
-
-.pot {
-  width: 80px;
-}
-
-.kolam {
-  width: 120px;
-  margin-top: 20px;
-  opacity: 0.7;
-}
-
-
