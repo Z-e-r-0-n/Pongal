@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Pongal Path</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="container">
+    <img src="assets/pot.svg" class="pot" alt="Pongal Pot">
+
+    <h1>Pongal Path</h1>
+    <p class="subtitle">A small journey. No prizes. Just curiosity.</p>
+
+    <div class="card">
+      <p id="question"></p>
+
+      <input
+        type="text"
+        id="answer"
+        placeholder="Enter your answer"
+        autocomplete="off"
+      />
+
+      <button onclick="submitAnswer()">Submit</button>
+
+      <p id="feedback"></p>
+    </div>
+
+    <img src="assets/kolam.svg" class="kolam" alt="Kolam">
+  </div>
+
+  <script src="challenge.js"></script>
+</body>
+</html>
+
+
