@@ -1,71 +1,227 @@
-<script>
-  const STORAGE_KEY = "pongal_quiz_state_v2";
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Mystery Hunt</title>
 
-  // IMPORTANT: set this to your Worker domain once deployed:
-  // e.g. https://pongal-quiz-api.<your-subdomain>.workers.dev
-  const API_BASE = "https://soft-wildflower-f349.kazuto-iii-kirigaya.workers.dev";
-
-  const ui = {
-    title: document.getElementById("level-title"),
-    sub: document.getElementById("sub-title"),
-    text: document.getElementById("question-text"),
-    input: document.getElementById("answer-input"),
-    btn: document.getElementById("submit-btn"),
-    feed: document.getElementById("feedback"),
-    bar: document.getElementById("progress-fill"),
-  };
-
-  let state = {
-    token: null,
-    level: 0,
-    currentText: "Loading...",
-    done: false,
-  };
-
-  function save() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  }
-
-  function load() {
-    const s = localStorage.getItem(STORAGE_KEY);
-    if (!s) return;
-    try {
-      const parsed = JSON.parse(s);
-      if (parsed && typeof parsed === "object") state = { ...state, ...parsed };
-    } catch {}
-  }
-
-  function setMessage(msg, kind) {
-    ui.feed.innerText = msg || "";
-    ui.feed.className = "message" + (kind ? " " + kind : "");
-  }
-
-  function render() {
-    // Progress: you can tune denominator; without knowing total count client-side,
-    // we can approximate using level.
-    const percent = Math.min(100, state.done ? 100 : (state.level * 25)); // assume ~4 levels feel
-    ui.bar.style.width = percent + "%";
-
-    if (state.done) {
-      ui.title.innerText = "MISSION COMPLETE";
-      ui.sub.innerText = "Server Verified ✅";
-      ui.text.innerText = state.currentText;
-      ui.text.style.color = "var(--accent-color)";
-      ui.input.style.display = "none";
-      ui.btn.style.display = "none";
-      return;
+  <style>
+    :root {
+      --bg: #121212;
+      --panel: #1e1e1e;
+      --text: #e0e0e0;
+      --accent: #00ff9d;
+      --error: #ff5555;
     }
 
-    ui.title.innerText = `LEVEL ${state.level + 1}`;
-    ui.sub.innerText = `Protocol: Server-Verified`;
-    ui.text.innerText = state.currentText;
+    * { box-sizing: border-box; }
 
-    ui.input.value = "";
-    setMessage("", "");
-    ui.input.focus();
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Courier New", monospace;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .container {
+      width: 90%;
+      max-width: 600px;
+      background: var(--panel);
+      padding: 2rem;
+      border-radius: 8px;
+      border: 1px solid #333;
+      box-shadow: 0 0 20px rgba(0,0,0,.5);
+      text-align: center;
+    }
+
+    h1 {
+      margin: 0;
+      color: var(--accent);
+      font-size: 1.6rem;
+      letter-spacing: 0.5px;
+    }
+
+    h2 {
+      margin: .3rem 0 1.5rem;
+      font-size: .9rem;
+      color: #888;
+    }
+
+    .question {
+      background: #252525;
+      border-left: 4px solid var(--accent);
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+      min-height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      word-break: break-word;
+    }
+
+    input {
+      width: 80%;
+      padding: 10px;
+      font-size: 1rem;
+      font-family: inherit;
+      background: #333;
+      border: 1px solid #555;
+      color: #fff;
+      border-radius: 4px;
+      outline: none;
+      caret-color: var(--accent);
+      -webkit-text-fill-color: #fff; /* extra safety for some themes */
+    }
+
+    input:focus { border-color: var(--accent); }
+
+    button {
+      margin-top: 1rem;
+      padding: 10px 20px;
+      font-family: inherit;
+      font-weight: bold;
+      background: var(--accent);
+      color: #121212;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: opacity .2s ease;
+    }
+
+    button:hover { opacity: .9; }
+    button:disabled { opacity: .55; cursor: not-allowed; }
+
+    .message {
+      height: 22px;
+      margin-top: .8rem;
+      font-size: .9rem;
+    }
+
+    .success { color: var(--accent); }
+    .error { color: var(--error); }
+
+    .progress {
+      margin-top: 2rem;
+      height: 4px;
+      background: #333;
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: var(--accent);
+      transition: width .3s ease;
+    }
+
+    .shake { animation: shake .4s; }
+
+    @keyframes shake {
+      0% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      50% { transform: translateX(5px); }
+      75% { transform: translateX(-5px); }
+      100% { transform: translateX(0); }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1 id="title">INITIALIZING</h1>
+  <h2 id="subtitle">Secure Channel Established</h2>
+
+  <div class="question" id="question">Loading…</div>
+
+  <input id="answer" placeholder="Enter answer…" autocomplete="off" />
+  <br/>
+  <button id="submit">SUBMIT</button>
+
+  <div class="message" id="message"></div>
+
+  <div class="progress">
+    <div class="progress-fill" id="progress"></div>
+  </div>
+</div>
+
+<script>
+/* ================= CONFIG ================= */
+
+const API_BASE = "https://soft-wildflower-f349.kazuto-iii-kirigaya.workers.dev";
+const STORAGE_KEY = "pongal_quiz_state";
+
+/* ================= STATE ================= */
+
+let state = {
+  token: null,
+  level: 0,
+  text: "Loading…",
+  done: false
+};
+
+/* ================= UI ================= */
+
+const ui = {
+  title: document.getElementById("title"),
+  subtitle: document.getElementById("subtitle"),
+  question: document.getElementById("question"),
+  input: document.getElementById("answer"),
+  button: document.getElementById("submit"),
+  msg: document.getElementById("message"),
+  bar: document.getElementById("progress"),
+};
+
+function save() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function load() {
+  try {
+    const s = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if (s && typeof s === "object") state = { ...state, ...s };
+  } catch {}
+}
+
+function setMsg(text = "", cls = "") {
+  ui.msg.textContent = text;
+  ui.msg.className = "message " + cls;
+}
+
+function setBusy(busy) {
+  ui.button.disabled = busy;
+  ui.input.disabled = busy;
+}
+
+function render() {
+  // progress is approximate unless you also send totalLevels from backend
+  ui.bar.style.width = state.done ? "100%" : `${Math.min(100, state.level * 25)}%`;
+
+  if (state.done) {
+    ui.title.textContent = "MISSION COMPLETE";
+    ui.subtitle.textContent = "Server Verified ✔";
+    ui.question.textContent = state.text;
+    ui.question.style.color = "var(--accent)";
+    ui.input.style.display = "none";
+    ui.button.style.display = "none";
+    return;
   }
 
-  async function api(path, body) {
+  ui.title.textContent = `LEVEL ${state.level + 1}`;
+  ui.subtitle.textContent = "Protocol: Server-Verified";
+  ui.question.textContent = state.text;
+
+  // IMPORTANT: don't clear input here. It breaks typing when render() runs.
+}
+
+/* ================= API ================= */
+
+async function api(path, body) {
+  try {
     const res = await fetch(API_BASE + path, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -73,73 +229,98 @@
     });
     const data = await res.json().catch(() => ({}));
     return { ok: res.ok, status: res.status, data };
+  } catch (e) {
+    console.error("API error:", e);
+    return { ok: false, status: 0, data: { message: String(e) } };
+  }
+}
+
+/* ================= LOGIC ================= */
+
+async function start() {
+  // If we already have progress, just render it and focus input.
+  if (state.token && state.text && state.text !== "Loading…") {
+    render();
+    setTimeout(() => ui.input.focus(), 0);
+    return;
   }
 
-  async function startIfNeeded() {
-    // If we have token + text, just render.
-    if (state.token && state.currentText && !state.currentText.includes("Loading")) return;
+  setBusy(true);
+  const r = await api("/api/start", {});
+  setBusy(false);
 
-    const r = await api("/api/start", {});
-    if (!r.ok || !r.data.ok) {
-      state.currentText = "Failed to start. Check API_BASE / Worker.";
-      setMessage(r.data?.message || "Start failed.", "error");
-      render();
-      return;
-    }
-    state.token = r.data.token;
-    state.level = r.data.level;
-    state.done = r.data.done;
-    state.currentText = r.data.question || r.data.message || "Started.";
+  if (!r.ok || !r.data.ok) {
+    setMsg(r.data?.message || "Backend unreachable", "error");
+    return;
+  }
+
+  state.token = r.data.token;
+  state.level = r.data.level;
+  state.done = r.data.done;
+  state.text = r.data.question || r.data.message || "Started.";
+  save();
+  render();
+  setTimeout(() => ui.input.focus(), 0);
+}
+
+async function submit() {
+  const answer = ui.input.value.trim();
+  if (!answer) return;
+
+  setMsg("Verifying…", "success");
+  setBusy(true);
+
+  const r = await api("/api/answer", { token: state.token, answer });
+
+  setBusy(false);
+
+  if (!r.ok) {
+    setMsg(r.data?.message || `Error (${r.status})`, "error");
+    return;
+  }
+
+  if (r.data.token) state.token = r.data.token;
+
+  if (r.data.done) {
+    state.done = true;
+    state.level = r.data.level ?? state.level;
+    state.text = r.data.message || "Completed.";
     save();
     render();
+    return;
   }
 
-  async function handleAnswer() {
-    const raw = ui.input.value;
-    const answer = (raw || "").trim();
-    if (!answer) return;
+  if (r.data.correct) {
+    state.level = r.data.level;
+    state.text = r.data.question;
 
-    setMessage("Verifying...", "success");
-
-    const r = await api("/api/answer", { token: state.token, answer });
-    if (!r.ok) {
-      setMessage(r.data?.message || `Error (${r.status})`, "error");
-      return;
-    }
-
-    if (r.data.token) state.token = r.data.token;
-
-    if (r.data.done) {
-      state.done = true;
-      state.level = r.data.level ?? state.level;
-      state.currentText = r.data.message || "Completed.";
-      save();
-      render();
-      return;
-    }
-
-    if (r.data.correct) {
-      state.level = r.data.level;
-      state.currentText = r.data.question;
-      save();
-      setTimeout(render, 400);
-    } else {
-      setMessage(r.data.message || "Wrong.", "error");
-      ui.input.classList.add("shake");
-      setTimeout(() => ui.input.classList.remove("shake"), 500);
-      save();
-    }
+    ui.input.value = "";        // clear ONLY after a processed correct answer
+    setMsg("", "");
+    save();
+    render();
+    setTimeout(() => ui.input.focus(), 0);
+  } else {
+    setMsg(r.data.message || "Wrong", "error");
+    ui.input.classList.add("shake");
+    setTimeout(() => ui.input.classList.remove("shake"), 400);
+    // keep their typed text so they can edit it
   }
+}
 
-  ui.input.addEventListener("keypress", (e) => {
-    if (e.key === "Enter") handleAnswer();
-  });
+/* ================= EVENTS ================= */
 
-  load();
-  render();
-  startIfNeeded();
+ui.button.addEventListener("click", submit);
+ui.input.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") submit();
+});
 
-  // Expose for button onclick
-  window.handleAnswer = handleAnswer;
+/* ================= BOOT ================= */
+
+load();
+render();
+start();
 </script>
+
+</body>
+</html>
 
