@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Mystery Hunt Level Generator</title>
+    <style>
+        body { font-family: monospace; background: #111; color: #0f0; padding: 20px; max-width: 800px; margin: auto; }
+        .box { border: 1px solid #333; padding: 20px; margin-bottom: 20px; background: #222; }
+        input, textarea { width: 100%; background: #000; color: #fff; border: 1px solid #555; padding: 10px; margin-bottom: 10px; font-family: inherit; }
+        label { display: block; margin-bottom: 5px; color: #aaa; }
+        button { background: #0f0; color: #000; border: none; padding: 10px 20px; cursor: pointer; font-weight: bold; }
+        pre { background: #000; border: 1px solid #444; padding: 15px; white-space: pre-wrap; word-break: break-all; color: #fff; }
+        h2 { border-bottom: 1px solid #444; padding-bottom: 10px; }
+        .note { color: #f90; font-size: 0.9em; margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+
+    <h1>LEVEL GENERATOR</h1>
+    <p class="note">Use this tool to generate the code for your STEPS array.</p>
+
+    <div class="box">
+        <h2>1. The "Key" (Previous Answer)</h2>
+        <label>What answer will the user type to unlock this level?</label>
+        <input type="text" id="keyInput" placeholder="e.g., arjun">
+        
+        <h2>2. The "Payload" (Next Question)</h2>
+        <label>What question/text should appear after they type the answer above?</label>
+        <textarea id="payloadInput" rows="3" placeholder="e.g., What is his favorite food?"></textarea>
+
+        <h2>3. The "Next Answer" (Verification)</h2>
+        <label>What is the answer to the question in step 2? (Leave blank if this is the 'Final' victory screen)</label>
+        <input type="text" id="answerInput" placeholder="e.g., biryani">
+
+        <button onclick="generate()">GENERATE CODE</button>
+    </div>
+
+    <div class="box">
+        <h2>Output (Copy this)</h2>
+        <pre id="output">...</pre>
+    </div>
+
+<script>
+    // --- COPY OF CRYPTO LOGIC FROM GAME ---
+    const enc = new TextEncoder();
+
+    function normalize(s) { return s.trim().toLowerCase(); }
+
+    function buildKey(answer) {
+        let k = normalize(answer);
+        while (k.length < 16) k += "-";
+        return k.slice(0, 16);
+    }
+
+    // Convert ArrayBuffer to Base64
+    function bufferToBase64(buf) {
+        const binString = Array.from(new Uint8Array(buf), byte => String.fromCharCode(byte)).join("");
+        return btoa(binString);
+    }
+
+    // 1. SHA-256 Hashing
+    async function sha256Hex(text) {
+        if(!text) return "";
+        const buf = await crypto.subtle.digest("SHA-256", enc.encode(normalize(text)));
+        return Array.from(new Uint8Array(buf))
+            .map(b => b.toString(16).padStart(2, "0"))
+            .join("");
+    }
+
+    // 2. AES-GCM Encryption
+    async function encrypt(text, answer) {
+        const keyData = enc.encode(buildKey(answer));
+        const key = await crypto.subtle.importKey("raw", keyData, { name: "AES-GCM" }, false, ["encrypt"]);
+        
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const data = enc.encode(text);
+        
+        const encrypted = await crypto.subtle.encrypt(
+            { name: "AES-GCM", iv: iv },
+            key,
+            data
+        );
+
+        return {
+            data: bufferToBase64(encrypted),
+            iv: bufferToBase64(iv)
+        };
+    }
+
+    // --- GENERATOR LOGIC ---
+    async function generate() {
+        const key = document.getElementById('keyInput').value;
+        const payload = document.getElementById('payloadInput').value;
+        const nextAnswer = document.getElementById('answerInput').value;
+
+        if (!key || !payload) {
+            alert("Please enter at least the Key (Previous Answer) and Payload (Next Question).");
+            return;
+        }
+
+        // Encrypt the question using the previous answer
+        const cryptoData = await encrypt(payload, key);
+        
+        // Hash the next answer (if provided)
+        const nextHash = await sha256Hex(nextAnswer);
+
+        let outputObj = {
+            hash: nextHash,
+            data: cryptoData.data,
+            iv: cryptoData.iv
+        };
+
+        if (!nextAnswer) {
+            // It's the final level
+            delete outputObj.hash;
+            outputObj.final = true;
+        }
+
+        const jsonString = JSON.stringify(outputObj, null, 4);
+        
+        // Format it nicely for JS array
+        document.getElementById('output').innerText = "{" + jsonString.slice(1, -1) + "\n},";
+    }
+</script>
+</body>
+</html>

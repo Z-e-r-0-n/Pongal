@@ -1,0 +1,145 @@
+<script>
+  const STORAGE_KEY = "pongal_quiz_state_v2";
+
+  // IMPORTANT: set this to your Worker domain once deployed:
+  // e.g. https://pongal-quiz-api.<your-subdomain>.workers.dev
+  const API_BASE = "https://soft-wildflower-f349.kazuto-iii-kirigaya.workers.dev";
+
+  const ui = {
+    title: document.getElementById("level-title"),
+    sub: document.getElementById("sub-title"),
+    text: document.getElementById("question-text"),
+    input: document.getElementById("answer-input"),
+    btn: document.getElementById("submit-btn"),
+    feed: document.getElementById("feedback"),
+    bar: document.getElementById("progress-fill"),
+  };
+
+  let state = {
+    token: null,
+    level: 0,
+    currentText: "Loading...",
+    done: false,
+  };
+
+  function save() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }
+
+  function load() {
+    const s = localStorage.getItem(STORAGE_KEY);
+    if (!s) return;
+    try {
+      const parsed = JSON.parse(s);
+      if (parsed && typeof parsed === "object") state = { ...state, ...parsed };
+    } catch {}
+  }
+
+  function setMessage(msg, kind) {
+    ui.feed.innerText = msg || "";
+    ui.feed.className = "message" + (kind ? " " + kind : "");
+  }
+
+  function render() {
+    // Progress: you can tune denominator; without knowing total count client-side,
+    // we can approximate using level.
+    const percent = Math.min(100, state.done ? 100 : (state.level * 25)); // assume ~4 levels feel
+    ui.bar.style.width = percent + "%";
+
+    if (state.done) {
+      ui.title.innerText = "MISSION COMPLETE";
+      ui.sub.innerText = "Server Verified ✅";
+      ui.text.innerText = state.currentText;
+      ui.text.style.color = "var(--accent-color)";
+      ui.input.style.display = "none";
+      ui.btn.style.display = "none";
+      return;
+    }
+
+    ui.title.innerText = `LEVEL ${state.level + 1}`;
+    ui.sub.innerText = `Protocol: Server-Verified`;
+    ui.text.innerText = state.currentText;
+
+    ui.input.value = "";
+    setMessage("", "");
+    ui.input.focus();
+  }
+
+  async function api(path, body) {
+    const res = await fetch(API_BASE + path, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body || {}),
+    });
+    const data = await res.json().catch(() => ({}));
+    return { ok: res.ok, status: res.status, data };
+  }
+
+  async function startIfNeeded() {
+    // If we have token + text, just render.
+    if (state.token && state.currentText && !state.currentText.includes("Loading")) return;
+
+    const r = await api("/api/start", {});
+    if (!r.ok || !r.data.ok) {
+      state.currentText = "Failed to start. Check API_BASE / Worker.";
+      setMessage(r.data?.message || "Start failed.", "error");
+      render();
+      return;
+    }
+    state.token = r.data.token;
+    state.level = r.data.level;
+    state.done = r.data.done;
+    state.currentText = r.data.question || r.data.message || "Started.";
+    save();
+    render();
+  }
+
+  async function handleAnswer() {
+    const raw = ui.input.value;
+    const answer = (raw || "").trim();
+    if (!answer) return;
+
+    setMessage("Verifying...", "success");
+
+    const r = await api("/api/answer", { token: state.token, answer });
+    if (!r.ok) {
+      setMessage(r.data?.message || `Error (${r.status})`, "error");
+      return;
+    }
+
+    if (r.data.token) state.token = r.data.token;
+
+    if (r.data.done) {
+      state.done = true;
+      state.level = r.data.level ?? state.level;
+      state.currentText = r.data.message || "Completed.";
+      save();
+      render();
+      return;
+    }
+
+    if (r.data.correct) {
+      state.level = r.data.level;
+      state.currentText = r.data.question;
+      save();
+      setTimeout(render, 400);
+    } else {
+      setMessage(r.data.message || "Wrong.", "error");
+      ui.input.classList.add("shake");
+      setTimeout(() => ui.input.classList.remove("shake"), 500);
+      save();
+    }
+  }
+
+  ui.input.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") handleAnswer();
+  });
+
+  load();
+  render();
+  startIfNeeded();
+
+  // Expose for button onclick
+  window.handleAnswer = handleAnswer;
+</script>
+

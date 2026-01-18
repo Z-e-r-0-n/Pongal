@@ -47,10 +47,10 @@ async function decrypt(dataB64, ivB64, answer) {
 }
 
 /* =========================
-   LocalStorage (Option 2)
+   LocalStorage (resume)
 ========================= */
 
-function saveStep() {
+function saveStep(step) {
   localStorage.setItem("pongal_step", step.toString());
 }
 
@@ -64,7 +64,7 @@ function resetProgress() {
 }
 
 /* =========================
-   DATA (PLACEHOLDER)
+   DATA (YOU FILL THIS)
 ========================= */
 
 const STEPS = [
@@ -94,8 +94,6 @@ const STEPS = [
     iv: "3OVGWOBY6tUjzPI8"
   }
 ];
-
-
 /* =========================
    State
 ========================= */
@@ -111,21 +109,51 @@ const feedback = document.getElementById("feedback");
    Init
 ========================= */
 
-appendQuestion(STEPS[0].question);
-
-for (let i = 1; i <= step; i++) {
-  appendQuestion("✔ Completed");
-}
+renderProgress();
 
 /* =========================
-   UI
+   Rendering
 ========================= */
 
-function appendQuestion(text) {
+function renderProgress() {
+  qa.innerHTML = "";
+
+  // Completed questions
+  for (let i = 0; i < step; i++) {
+    qa.appendChild(renderCompleted(i + 1));
+  }
+
+  // Current question
+  if (step === 0) {
+    qa.appendChild(renderQuestion(STEPS[0].question));
+  }
+}
+
+function renderCompleted(num) {
+  const div = document.createElement("div");
+  div.className = "question";
+  div.style.display = "flex";
+  div.style.justifyContent = "space-between";
+  div.style.alignItems = "center";
+
+  const label = document.createElement("span");
+  label.innerText = `Question ${num}`;
+
+  const tick = document.createElement("span");
+  tick.innerText = "✔";
+  tick.style.color = "green";
+  tick.style.fontWeight = "bold";
+
+  div.appendChild(label);
+  div.appendChild(tick);
+  return div;
+}
+
+function renderQuestion(text) {
   const div = document.createElement("div");
   div.className = "question";
   div.innerText = text;
-  qa.appendChild(div);
+  return div;
 }
 
 /* =========================
@@ -149,25 +177,30 @@ async function submitAnswer() {
 
   lastAnswer = ans;
   step++;
-  saveStep();
+  saveStep(step);
 
   const next = STEPS[step];
 
   try {
-    if (next.final) {
+    // Final reveal
+    if (next && next.final) {
+      qa.appendChild(renderCompleted(step));
       const reveal = await decrypt(next.data, next.iv, lastAnswer);
-      appendQuestion(reveal);
+      qa.appendChild(renderQuestion(reveal));
       resetProgress();
       input.remove();
       document.querySelector("button").remove();
       return;
     }
 
-    const q = await decrypt(next.data, next.iv, lastAnswer);
-    appendQuestion(q);
+    // Next encrypted question
+    if (next) {
+      qa.appendChild(renderCompleted(step));
+      const q = await decrypt(next.data, next.iv, lastAnswer);
+      qa.appendChild(renderQuestion(q));
+    }
 
   } catch (e) {
     console.error(e);
-    feedback.innerText = "Decryption failed.";
-  }
-}
+    feedback.innerText = "Decryption fa
+

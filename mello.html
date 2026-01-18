@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Mystery Hunt</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --text-color: #e0e0e0;
+            --accent-color: #00ff9d;
+            --error-color: #ff5555;
+            --container-bg: #1e1e1e;
+        }
+
+        body {
+            font-family: 'Courier New', Courier, monospace;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .container {
+            background-color: var(--container-bg);
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            max-width: 600px;
+            width: 90%;
+            text-align: center;
+            border: 1px solid #333;
+        }
+
+        h1 { margin-bottom: 0.5rem; color: var(--accent-color); }
+        h2 { font-size: 1rem; margin-top: 0; color: #888; margin-bottom: 2rem; }
+
+        .question-box {
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+            padding: 1rem;
+            background: #252525;
+            border-left: 3px solid var(--accent-color);
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            word-break: break-word;
+        }
+
+        input[type="text"] {
+            width: 80%;
+            padding: 10px;
+            font-family: inherit;
+            background: #333;
+            border: 1px solid #555;
+            color: white;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+            outline: none;
+            font-size: 1rem;
+        }
+
+        input[type="text"]:focus { border-color: var(--accent-color); }
+
+        button {
+            padding: 10px 20px;
+            font-family: inherit;
+            font-weight: bold;
+            background: var(--accent-color);
+            color: #121212;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            font-size: 1rem;
+        }
+
+        button:hover { opacity: 0.9; }
+
+        .message { height: 20px; margin-top: 10px; font-size: 0.9rem; }
+        .success { color: var(--accent-color); }
+        .error { color: var(--error-color); }
+
+        .progress-bar {
+            height: 4px;
+            background: #333;
+            margin-top: 2rem;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: var(--accent-color);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        .shake { animation: shake 0.5s; }
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            10% { transform: translate(-1px, -2px) rotate(-1deg); }
+            20% { transform: translate(-3px, 0px) rotate(1deg); }
+            30% { transform: translate(3px, 2px) rotate(0deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            50% { transform: translate(-1px, 2px) rotate(-1deg); }
+            60% { transform: translate(-3px, 1px) rotate(0deg); }
+            70% { transform: translate(3px, 1px) rotate(-1deg); }
+            80% { transform: translate(-1px, -1px) rotate(1deg); }
+            90% { transform: translate(1px, 2px) rotate(0deg); }
+            100% { transform: translate(1px, -2px) rotate(-1deg); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1 id="level-title">INITIALIZING...</h1>
+    <h2 id="sub-title">System Secure.</h2>
+
+    <div id="game-area">
+        <div class="question-box" id="question-text">
+            Loading cryptographic modules...
+        </div>
+
+        <input type="text" id="answer-input" placeholder="Enter solution..." autocomplete="off">
+        <br>
+        <button onclick="handleAnswer()" id="submit-btn">DECRYPT</button>
+        
+        <div class="message" id="feedback"></div>
+    </div>
+
+    <div class="progress-bar">
+        <div class="progress-fill" id="progress-fill"></div>
+    </div>
+</div>
+
+<script>
+    /* =========================
+       1. DATA & CONFIG
+    ========================= */
+    
+    // Data provided by you
+    const STEPS = [
+        {
+            // Level 0
+            question: "PLACEHOLDER QUESTION 1",
+            hash: "4b227777d4dd1fc61c6f884f48641d02b4d121d3fd328cb08b5531fcacdabf8a"
+        },
+        {
+            // Level 1
+            hash: "06d4d6e9d447d29e531ca78bcd7b8770db4b3ce449ec8278aaf24350ebbcc2ed",
+            data: "KQ8wMIu8SjaVguGbc73dgZDvY70Ctwmq",
+            iv: "9Kc2aQYqYg7py56P"
+        },
+        {
+            // Level 2
+            hash: "8a798890fe93817163b10b5f7bd2ca4d25d84c52739a645a889c173eee7d9d3d",
+            data: "/rpikqNioMrU61Wy300Z4SCrXDKIhyc1huB2kIgO2vxCLvbwL4R+tVc=",
+            iv: "0RT/XvUmI8JwCFFN"
+        },
+        {
+            // Final Level (End)
+            final: true,
+            data: "2F83UY9K++XlHW1uSqpvVvbXWFOynSQtWIJeZ4cKRG/Onr0fVkCd",
+            iv: "3OVGWOBY6tUjzPI8"
+        }
+    ];
+
+    /* =========================
+       2. CRYPTO HELPERS
+    ========================= */
+    const enc = new TextEncoder();
+    const dec = new TextDecoder();
+
+    function normalize(s) {
+        return s.trim().toLowerCase();
+    }
+
+    function buildKey(answer) {
+        let k = answer;
+        while (k.length < 16) k += "-";
+        return k.slice(0, 16);
+    }
+
+    async function sha256Hex(text) {
+        const buf = await crypto.subtle.digest("SHA-256", enc.encode(text));
+        return Array.from(new Uint8Array(buf))
+            .map(b => b.toString(16).padStart(2, "0"))
+            .join("");
+    }
+
+    async function importKey(answer) {
+        return crypto.subtle.importKey(
+            "raw",
+            enc.encode(buildKey(answer)),
+            { name: "AES-GCM" },
+            false,
+            ["decrypt"]
+        );
+    }
+
+    async function decrypt(dataB64, ivB64, answer) {
+        try {
+            const key = await importKey(answer);
+            const data = Uint8Array.from(atob(dataB64), c => c.charCodeAt(0));
+            const iv = Uint8Array.from(atob(ivB64), c => c.charCodeAt(0));
+
+            const plain = await crypto.subtle.decrypt(
+                { name: "AES-GCM", iv, tagLength: 128 },
+                key,
+                data
+            );
+            return dec.decode(plain);
+        } catch (e) {
+            console.error("Decryption failed:", e);
+            return null; // Incorrect key
+        }
+    }
+
+    /* =========================
+       3. STATE MANAGEMENT
+    ========================= */
+    const STORAGE_KEY = 'pongal_hunt_state';
+    
+    // We save not just the step index, but the current decrypted question text
+    // This allows the user to refresh without losing the question they unlocked.
+    let currentState = {
+        step: 0,
+        currentText: STEPS[0].question, 
+        isComplete: false
+    };
+
+    function saveProgress() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(currentState));
+    }
+
+    function loadProgress() {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                // Basic validation
+                if (typeof parsed.step === 'number') {
+                    currentState = parsed;
+                }
+            } catch (e) {
+                console.error("Save file corrupted");
+            }
+        }
+    }
+
+    /* =========================
+       4. GAME UI LOGIC
+    ========================= */
+    const ui = {
+        title: document.getElementById('level-title'),
+        sub: document.getElementById('sub-title'),
+        text: document.getElementById('question-text'),
+        input: document.getElementById('answer-input'),
+        btn: document.getElementById('submit-btn'),
+        feed: document.getElementById('feedback'),
+        bar: document.getElementById('progress-fill')
+    };
+
+    function renderGame() {
+        // Calculate Progress
+        const percent = (currentState.step / (STEPS.length - 1)) * 100;
+        ui.bar.style.width = `${percent}%`;
+
+        // Check Victory
+        if (currentState.isComplete) {
+            ui.title.innerText = "MISSION COMPLETE";
+            ui.sub.innerText = "Decryption Successful";
+            ui.text.innerText = currentState.currentText; // The final decrypted message
+            ui.text.style.color = "var(--accent-color)";
+            ui.input.style.display = 'none';
+            ui.btn.style.display = 'none';
+            return;
+        }
+
+        // Standard Level Render
+        ui.title.innerText = `LEVEL ${currentState.step + 1}`;
+        ui.sub.innerText = `Protocol: SHA-256 + AES-GCM`;
+        ui.text.innerText = currentState.currentText;
+        
+        // Reset Inputs
+        ui.input.value = "";
+        ui.feed.innerText = "";
+        ui.feed.className = "message";
+        ui.input.focus();
+    }
+
+    async function handleAnswer() {
+        const rawInput = ui.input.value;
+        const ans = normalize(rawInput);
+        
+        if (!ans) return;
+
+        // 1. Verify Hash of current answer
+        const currentStepObj = STEPS[currentState.step];
+        const expectedHash = currentStepObj.hash;
+        const actualHash = await sha256Hex(ans);
+
+        if (actualHash !== expectedHash) {
+            // WRONG ANSWER
+            ui.feed.innerText = "Access Denied: Invalid Hash";
+            ui.feed.className = "message error";
+            ui.input.classList.add('shake');
+            setTimeout(() => ui.input.classList.remove('shake'), 500);
+            return;
+        }
+
+        // CORRECT ANSWER
+        ui.feed.innerText = "Hash Verified. Decrypting next layer...";
+        ui.feed.className = "message success";
+
+        // 2. Attempt to decrypt next step
+        const nextStepIdx = currentState.step + 1;
+        const nextStepObj = STEPS[nextStepIdx];
+
+        if (nextStepObj) {
+            const decryptedText = await decrypt(nextStepObj.data, nextStepObj.iv, ans);
+
+            if (decryptedText) {
+                // Decryption Success
+                currentState.step = nextStepIdx;
+                currentState.currentText = decryptedText;
+                
+                if (nextStepObj.final) {
+                    currentState.isComplete = true;
+                }
+
+                saveProgress();
+                
+                // Small delay for effect
+                setTimeout(renderGame, 800);
+            } else {
+                // This shouldn't happen if the hash matched, unless data is corrupted
+                ui.feed.innerText = "Critical Error: Decryption failed despite valid hash.";
+                ui.feed.className = "message error";
+            }
+        }
+    }
+
+    // Handle Enter Key
+    ui.input.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') handleAnswer();
+    });
+
+    // Boot
+    loadProgress();
+    renderGame();
+
+</script>
+</body>
+</html>
